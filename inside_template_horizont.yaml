@@ -1,5 +1,9 @@
 heat_template_version: 2013-05-23
 
+description: >
+  HOT template to create multiple instances of single server. Each server will have
+  it's own private network...
+
 parameters:
   image:
     type: string
@@ -45,7 +49,7 @@ resources:
     properties:
       count: { get_param: cluster_size }
       resource_def:
-        type: lib/server.yaml
+        type: Lib::MSG::Server
         properties:
           image: { get_param: image }
           flavor: { get_param: flavor }

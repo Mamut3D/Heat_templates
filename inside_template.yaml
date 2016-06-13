@@ -34,7 +34,7 @@ parameters:
 
 resources:
   server:
-    type: lib/server.yaml
+    type: Lib::MSG::Server
     properties:
       image: { get_param: image }
       flavor: { get_param: flavor }
