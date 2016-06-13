@@ -1,0 +1,43 @@
+heat_template_version: 2013-05-23
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image to be used for server. Please use an Ubuntu based image.
+    default: bbd62832-062e-445a-b7da-6c67d02b35a8
+    constraints:
+      - custom_constraint: glance.image
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used on the compute instance.
+    default: m1.small
+    constraints:
+      - custom_constraint: nova.flavor
+  key_name:
+    type: string
+    label: Key name
+    description: Name of key-pair to be installed on the compute instance.
+    default: my_key
+    constraints:
+      - custom_constraint: nova.keypair
+  private_network:
+    type: string
+    description: Name of private network to be created
+    default: PrivateNetwork
+  public_network:
+    type: string
+    description: >
+      ID or name of public network for which floating IP addresses will be allocated
+    default: seg-10.16.31.128-191
+
+resources:
+  server:
+    type: lib/server.yaml
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name }
+      private_network: { get_param: private_network }
+      public_network: { get_param: public_network }
