@@ -1,0 +1,87 @@
+heat_template_version: 2013-05-23
+
+description: Template that installs mesos master server(s).
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image to be used for server. Please use an Ubuntu based image.
+    default: bbd62832-062e-445a-b7da-6c67d02b35a8
+    constraints:
+      - custom_constraint: glance.image
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used on the compute instance.
+    default: m1.small
+    constraints:
+      - custom_constraint: nova.flavor
+  key_name:
+    type: string
+    label: Key name
+    description: Name of key-pair to be installed on the compute instance.
+    default: my_key
+    constraints:
+      - custom_constraint: nova.keypair
+  private_network:
+    type: string
+    description: Name of private network to be created
+    default: PrivateNetwork
+  public_network:
+    type: string
+    description: >
+      ID or name of public network for which floating IP addresses will be allocated
+    default: seg-10.16.31.128-191
+
+resources:
+  port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: private_network }
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_network }
+      port_id: { get_resource: port }
+
+  server:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: port }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          params:
+            __floating_ip__: { get_attr: [floating_ip, floating_ip_address] }
+          template: |
+            #!/bin/sh
+            sudo su
+            echo "fart" > /home/ubuntu/fart
+            echo "export http_proxy=http://ogun.ics.muni.cz:3128/" >> /etc/environment
+            echo "export https_proxy=http://ogun.ics.muni.cz:3128/" >> /etc/environment
+            export http_proxy=http://ogun.ics.muni.cz:3128/
+            export https_proxy=http://ogun.ics.muni.cz:3128/
+            apt-get install htop vim -y
+            echo "__floating_ip__ $HOSTNAME" >> /etc/hosts
+            echo "__floating_ip__ $HOSTNAME" >> /home/ubuntu/fart
+
+
+outputs:
+  name:
+    description: Name of the tiny instance.
+    value: { get_attr: [server, name] }
+  ip:
+    description: The IP address of the tiny instance.
+    value: { get_attr: [server, first_address] }
+  port:
+    description: The network port of the Flasky instance.
+    value: { get_resource: port }
+  floating_ip:
+    description: The network port of the Flasky instance.
+    value: { get_resource: floating_ip }
