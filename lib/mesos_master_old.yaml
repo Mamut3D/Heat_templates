@@ -33,17 +33,6 @@ parameters:
     description: >
       ID or name of public network for which floating IP addresses will be allocated
     default: seg-10.16.31.128-191
-  zookeeper_my_id:
-    type: string
-    label: ZookeeperId
-    description: Zookeper id /etc/zookeeper/conf/myid. Each master in cluster should have different.
-    default: "1"
-  
-  node_index:
-    type: string
-    label: MasterNodeId
-    description: Zookeper id /etc/zookeeper/conf/myid. Each master in cluster should have different.
-
 
 resources:
   port:
@@ -70,19 +59,12 @@ resources:
         str_replace:
           params:
             __floating_ip__: { get_attr: [floating_ip, floating_ip_address] }
-            __zookeeper_my_id__: { get_param: zookeeper_my_id }
-            __node_index__: { get_param: nodeindex }
           template: |
             #!/bin/sh
             sudo su
-            
-            cat <<'EOF' > /root/install.sh
-            #!/bin/sh
-            # End on any nonzero exit code
-            set -e
-            echo "__node_index__" > /root/test
-
-            exit 0
+            exec >> /root/install_mesos.log
+            exec 2>&1
+            echo "fart" > /home/ubuntu/fart
             echo "export http_proxy=http://ogun.ics.muni.cz:3128/" >> /etc/environment
             echo "export https_proxy=http://ogun.ics.muni.cz:3128/" >> /etc/environment
             export http_proxy=http://ogun.ics.muni.cz:3128/
@@ -91,12 +73,12 @@ resources:
             echo "__floating_ip__ $(hostname)" >> /etc/hosts
 
             # Mesos master install
-            # Setup 
+            # Setup
             apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E56151BF
             DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
             CODENAME=$(lsb_release -cs)
             # Add the repository
-            echo "deb http://repos.mesosphere.com/${DISTRO} ${CODENAME} main" > /etc/apt/sources.list.d/mesosphere.list
+            echo "deb http://repos.mesosphere.com/${DISTRO} ${CODENAME} main" | tee /etc/apt/sources.list.d/mesosphere.list
             # Install Java 8 from Oracle's PPA
             add-apt-repository ppa:webupd8team/java -y
             apt-get update -y
@@ -106,37 +88,10 @@ resources:
             
             apt-get -y install mesos marathon           
             
-            # Configure Zookeper
-            echo "__zookeeper_my_id__" > /etc/zookeeper/conf/myid
-            echo "server.1=__floating_ip__:2888:3888" > /etc/zookeeper/conf/zoo.cfg
-            
-            # Start zookeeper
-            service zookeeper restart
-
-            # Config mesos and marathon
-            echo "zk://__floating_ip__:2181/mesos" > /etc/mesos/zk
-            echo "1" > /etc/mesos-master/quorum
-            echo "$(hostname)" > /etc/mesos-master/hostname
-            echo "$(hostname)" > /etc/marathon/conf/hostname   
-
-            # Disable mesos slave
-            service mesos-slave stop
-            echo "manual" > /etc/init/mesos-slave.override
-
-            # Restart services
-            service mesos-master restart
-            
-
-
             echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-            echo "SCRIPT FINISHED SUCESFULLY"
+            echo "SCRIPT FINISHED"
             echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-            EOF
-            chmod 700 /root/install.sh
             
-            . /root/install.sh >> /root/install_mesos.log
-            echo $? >> /root/install_mesos.log
-
 outputs:
   name:
     description: Name of the tiny instance.
