@@ -40,22 +40,30 @@ parameters:
     type: number
     label: Cluster size
     description: Number of instances in cluster.
-    default: 2
+    default: 1
 
 
 resources:
-  some_servers:
+  mesos_net:
+    type: lib/mesos_master_network.yaml
+    properties:
+      private_network: PrivateNetwork
+      public_network: seg-10.16.31.128-191
+  
+  mesos_servers:
     type: OS::Heat::ResourceGroup
     properties:
-      count: { get_param: cluster_size }
+      count: {get_param: cluster_size}
       resource_def:
-        type: lib/mesos_master.yaml 
+        type: lib/mesos_master.yaml
         properties:
           name: MasterNode_%index%
           node_index: '%index%'
-          cluster_size: { get_param: cluster_size }
-          image: { get_param: image }
-          flavor: { get_param: flavor }
-          key_name: { get_param: key_name }
-          private_network: { get_param: private_network }
-          public_network: { get_param: public_network }
+          cluster_size: {get_param: cluster_size}
+          flavor: {get_param: flavor}
+          floating_ip:
+            get_attr: [mesos_net, floating_ip]
+          image: {get_param: image}
+          key_name: {get_param: key_name}
+          port:
+            get_attr: [mesos_net, port]      

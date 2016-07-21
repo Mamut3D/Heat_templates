@@ -28,14 +28,15 @@ parameters:
     default: my_key
     constraints:
       - custom_constraint: nova.keypair
-  
-  floating_ip:
+  private_network:
     type: string
-    description: Floating ip of master node
-  
-  port:
+    description: Name of private network to be created
+    default: PrivateNetwork
+  public_network:
     type: string
-    description: Port of master node
+    description: >
+      ID or name of public network for which floating IP addresses will be allocated
+    default: seg-10.16.31.128-191
   
   node_index:
     type: string
@@ -59,6 +60,17 @@ resources:
   wait_handle:
     type: OS::Heat::WaitConditionHandle
 
+  port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: private_network }
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_network }
+      port_id: { get_resource: port }
+
   server:
     type: OS::Nova::Server
     properties:
@@ -67,12 +79,12 @@ resources:
       flavor: { get_param: flavor }
       key_name: { get_param: key_name }
       networks:
-        - port: { get_param: port }
+        - port: { get_resource: port }
       user_data_format: RAW
       user_data:
         str_replace:
           params:
-            __floating_ip__: { get_param: [floating_ip, floating_ip_address] }
+            __floating_ip__: { get_attr: [floating_ip, floating_ip_address] }
             __node_index__: { get_param: node_index }
             __cluster_size__: {get_param: cluster_size }
             wc_notify: { get_attr: ['wait_handle', 'curl_cli'] }
@@ -162,7 +174,7 @@ outputs:
     value: { get_attr: [server, first_address] }
   port:
     description: The network port of the Flasky instance.
-    value: { get_param: port }
+    value: { get_resource: port }
   floating_ip:
     description: The network port of the Flasky instance.
-    value: { get_param: floating_ip }
+    value: { get_resource: floating_ip }
